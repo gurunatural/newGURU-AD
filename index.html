@@ -82,7 +82,8 @@
             BarChart as BarChartIcon, 
             Download,
             LogOut,
-            Lock
+            Lock,
+            Filter
         } from 'lucide-react';
 
         // --- FIREBASE CONFIGURATION ---
@@ -320,10 +321,18 @@
             );
         };
 
-        const SocialSection = ({ darkMode, socialLinks, onSave, onDelete }) => {
+        const SocialSection = ({ darkMode, socialLinks, socialCategories, onSave, onDelete }) => {
             const [isModalOpen, setIsModalOpen] = useState(false);
-            const [form, setForm] = useState({ name: '', url: '' });
+            const [form, setForm] = useState({ name: '', url: '', category: '' });
             const [editingId, setEditingId] = useState(null);
+            const [filter, setFilter] = useState('All');
+
+            // Default category selection
+            useEffect(() => {
+                if (!form.category && socialCategories.length > 0) {
+                    setForm(prev => ({ ...prev, category: socialCategories[0].name }));
+                }
+            }, [socialCategories, isModalOpen]);
 
             const handleSubmit = (e) => {
                 e.preventDefault();
@@ -334,31 +343,69 @@
                     id: editingId,
                     name: form.name, 
                     url,
-                    followers: '0' 
+                    category: form.category || (socialCategories[0] ? socialCategories[0].name : 'General')
                 });
 
                 setIsModalOpen(false);
-                setForm({ name: '', url: '' });
+                setForm({ name: '', url: '', category: '' });
                 setEditingId(null);
             };
 
             const handleEdit = (link, e) => {
                 e.stopPropagation();
-                setForm({ name: link.name, url: link.url });
+                setForm({ name: link.name, url: link.url, category: link.category });
                 setEditingId(link.id);
                 setIsModalOpen(true);
             };
 
+            const handleOpenModal = () => {
+                setForm({ name: '', url: '', category: socialCategories[0] ? socialCategories[0].name : '' });
+                setEditingId(null);
+                setIsModalOpen(true);
+            };
+
+            // Filter logic
+            const filteredLinks = filter === 'All' 
+                ? socialLinks 
+                : socialLinks.filter(link => link.category === filter);
+
             return (
                 <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                    <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>Social Media Hub</h2>
+                    <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>Social Media & Tools</h2>
                     <button 
-                    onClick={() => { setForm({name: '', url: ''}); setEditingId(null); setIsModalOpen(true); }}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition flex items-center gap-2"
+                        onClick={handleOpenModal}
+                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition flex items-center gap-2"
                     >
-                    <Plus size={16} /> Add Platform
+                    <Plus size={16} /> Add New
                     </button>
+                </div>
+
+                {/* Filter Bar */}
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    <button 
+                        onClick={() => setFilter('All')}
+                        className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors border ${
+                            filter === 'All' 
+                            ? 'bg-indigo-600 text-white border-indigo-600' 
+                            : `${darkMode ? 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`
+                        }`}
+                    >
+                        All Items
+                    </button>
+                    {socialCategories.map(cat => (
+                        <button 
+                            key={cat.id}
+                            onClick={() => setFilter(cat.name)}
+                            className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors border ${
+                                filter === cat.name 
+                                ? 'bg-indigo-600 text-white border-indigo-600' 
+                                : `${darkMode ? 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`
+                            }`}
+                        >
+                            {cat.name}
+                        </button>
+                    ))}
                 </div>
 
                 {isModalOpen && (
@@ -366,23 +413,35 @@
                     <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'} rounded-xl shadow-2xl w-full max-w-md p-6 border`}>
                         <div className="flex justify-between items-center mb-6">
                         <h3 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                            {editingId ? 'Edit Platform' : 'Add Social Platform'}
+                            {editingId ? 'Edit Item' : 'Add New Item'}
                         </h3>
                         <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-500"><X size={24} /></button>
                         </div>
                         <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-500 mb-1">Platform Name</label>
+                            <label className="block text-sm font-medium text-gray-500 mb-1">Name</label>
                             <input 
-                            autoFocus type="text" placeholder="e.g. Instagram"
+                            autoFocus type="text" placeholder="e.g. Instagram, Canva, Buffer"
                             className={`w-full p-2 rounded-lg border ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'} focus:ring-2 focus:ring-indigo-500 focus:outline-none`}
                             value={form.name} onChange={e => setForm({...form, name: e.target.value})}
                             />
                         </div>
                         <div>
+                            <label className="block text-sm font-medium text-gray-500 mb-1">Category</label>
+                            <select 
+                                className={`w-full p-2 rounded-lg border ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'} focus:ring-2 focus:ring-indigo-500 focus:outline-none`}
+                                value={form.category} 
+                                onChange={e => setForm({...form, category: e.target.value})}
+                            >
+                                {socialCategories.map(cat => (
+                                    <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
                             <label className="block text-sm font-medium text-gray-500 mb-1">Link / URL</label>
                             <input 
-                            type="text" placeholder="e.g. instagram.com/guru"
+                            type="text" placeholder="e.g. https://..."
                             className={`w-full p-2 rounded-lg border ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'} focus:ring-2 focus:ring-indigo-500 focus:outline-none`}
                             value={form.url} onChange={e => setForm({...form, url: e.target.value})}
                             />
@@ -397,26 +456,37 @@
                 )}
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {socialLinks.map((link) => (
+                    {filteredLinks.length === 0 && (
+                        <div className="col-span-full text-center py-12 text-gray-400">
+                            No items found in this category.
+                        </div>
+                    )}
+                    {filteredLinks.map((link) => (
                     <div 
                         key={link.id} 
                         onClick={() => window.open(link.url, '_blank')}
-                        className={`${darkMode ? 'bg-gray-800 border-gray-700 hover:border-gray-500' : 'bg-white border-gray-100 hover:border-indigo-300'} p-6 rounded-xl border relative overflow-hidden cursor-pointer transition-all group hover:-translate-y-1 shadow-sm`}
+                        className={`${darkMode ? 'bg-gray-800 border-gray-700 hover:border-gray-500' : 'bg-white border-gray-100 hover:border-indigo-300'} p-6 rounded-xl border relative overflow-hidden cursor-pointer transition-all group hover:-translate-y-1 shadow-sm flex flex-col justify-between h-full`}
                     >
                         <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                         <button onClick={(e) => handleEdit(link, e)} className="p-1.5 bg-white/10 backdrop-blur-md rounded-full hover:bg-indigo-500 hover:text-white transition shadow-sm"><Edit2 size={14} /></button>
                         <button onClick={(e) => { e.stopPropagation(); onDelete(link.id); }} className="p-1.5 bg-white/10 backdrop-blur-md rounded-full hover:bg-red-500 hover:text-white transition shadow-sm"><Trash2 size={14} /></button>
                         </div>
 
-                        <div className="absolute top-0 right-0 p-4 opacity-10">
-                        <Share2 size={100} className={darkMode ? 'text-white' : 'text-black'} />
+                        <div>
+                            <div className="flex justify-between items-start mb-4">
+                                <div className={`p-3 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                                    <Share2 size={24} className={darkMode ? 'text-indigo-400' : 'text-indigo-600'} />
+                                </div>
+                                <span className={`text-[10px] uppercase font-bold tracking-wide px-2 py-1 rounded ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-500'}`}>
+                                    {link.category || 'General'}
+                                </span>
+                            </div>
+                            <h3 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-800'} mb-1`}>{link.name}</h3>
                         </div>
-                        <h3 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>{link.name}</h3>
-                        <p className="text-3xl font-bold text-indigo-600 mt-2">{link.followers || '-'}</p>
-                        <p className="text-sm text-gray-500">Followers</p>
+                        
                         {link.url && (
-                        <div className="mt-4 flex gap-2 items-center text-xs text-indigo-400">
-                            <ExternalLink size={12} /> {link.url}
+                        <div className="mt-4 flex gap-2 items-center text-xs text-indigo-500 font-medium">
+                            Visit Link <ExternalLink size={12} />
                         </div>
                         )}
                     </div>
@@ -734,6 +804,7 @@
             darkMode, setDarkMode, 
             platforms, onAddPlatform, onEditPlatform, onDeletePlatform,
             adTypes, onAddAdType, onEditAdType, onDeleteAdType,
+            socialCategories, onAddSocialCategory, onEditSocialCategory, onDeleteSocialCategory,
             ads, onLogout, accessCode 
         }) => {
             const [newItem, setNewItem] = useState('');
@@ -744,14 +815,16 @@
                 e.preventDefault();
                 if (newItem.trim()) {
                     if(activeTab === 'platforms') onAddPlatform(newItem.trim());
-                    else onAddAdType(newItem.trim());
+                    else if(activeTab === 'adTypes') onAddAdType(newItem.trim());
+                    else if(activeTab === 'socialCats') onAddSocialCategory(newItem.trim());
                     setNewItem('');
                 }
             };
 
             const handleDelete = (id) => {
                 if(activeTab === 'platforms') onDeletePlatform(id);
-                else onDeleteAdType(id);
+                else if(activeTab === 'adTypes') onDeleteAdType(id);
+                else if(activeTab === 'socialCats') onDeleteSocialCategory(id);
             };
 
             const startEdit = (id, value) => setEditItem({ id, value });
@@ -759,7 +832,8 @@
             const saveEdit = () => {
                 if (editItem.value.trim() && editItem.id !== null) {
                     if(activeTab === 'platforms') onEditPlatform(editItem.id, editItem.value.trim());
-                    else onEditAdType(editItem.id, editItem.value.trim());
+                    else if(activeTab === 'adTypes') onEditAdType(editItem.id, editItem.value.trim());
+                    else if(activeTab === 'socialCats') onEditSocialCategory(editItem.id, editItem.value.trim());
                     setEditItem({ id: null, value: '' });
                 }
             };
@@ -788,7 +862,14 @@
                 document.body.removeChild(link);
             };
 
-            const currentList = activeTab === 'platforms' ? platforms : adTypes;
+            const getCurrentList = () => {
+                if(activeTab === 'platforms') return platforms;
+                if(activeTab === 'adTypes') return adTypes;
+                if(activeTab === 'socialCats') return socialCategories;
+                return [];
+            };
+
+            const currentList = getCurrentList();
 
             return (
                 <div className="space-y-6">
@@ -829,9 +910,10 @@
                             </div>
 
                             <div>
-                                <div className="flex gap-4 border-b border-gray-200 mb-4">
-                                    <button onClick={() => setActiveTab('platforms')} className={`pb-2 text-sm font-medium transition-colors ${activeTab === 'platforms' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>Ad Platforms</button>
-                                    <button onClick={() => setActiveTab('adTypes')} className={`pb-2 text-sm font-medium transition-colors ${activeTab === 'adTypes' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>Advertisement Types</button>
+                                <div className="flex gap-2 overflow-x-auto pb-2 border-b border-gray-200 mb-4 scrollbar-hide">
+                                    <button onClick={() => setActiveTab('platforms')} className={`px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors rounded-lg ${activeTab === 'platforms' ? 'bg-indigo-50 text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>Ad Platforms</button>
+                                    <button onClick={() => setActiveTab('adTypes')} className={`px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors rounded-lg ${activeTab === 'adTypes' ? 'bg-indigo-50 text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>Ad Types</button>
+                                    <button onClick={() => setActiveTab('socialCats')} className={`px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors rounded-lg ${activeTab === 'socialCats' ? 'bg-indigo-50 text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>Social Categories</button>
                                 </div>
                                 
                                 <div className="flex gap-2 mb-4">
@@ -877,6 +959,7 @@
             const [platforms, setPlatforms] = useState([]);
             const [adTypes, setAdTypes] = useState([]);
             const [socialLinks, setSocialLinks] = useState([]);
+            const [socialCategories, setSocialCategories] = useState([]);
             const [links, setLinks] = useState([]);
             const [darkMode, setDarkMode] = useState(localStorage.getItem('guru_theme') === 'true');
 
@@ -912,7 +995,6 @@
             useEffect(() => {
                 if (!user || !accessCode) return;
 
-                // Path uses ACCESS CODE now, effectively "sharing" the folder
                 const getPath = (col) => collection(db, 'artifacts', APP_ID, 'teams', accessCode, col);
 
                 const unsubAds = onSnapshot(query(getPath('ads'), orderBy('date', 'desc')), (snapshot) => {
@@ -939,6 +1021,14 @@
                     setSocialLinks(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
                 });
 
+                const unsubSocialCats = onSnapshot(getPath('social_categories'), async (snapshot) => {
+                    if (snapshot.empty) {
+                        ['Social Profile', 'Ad Tool', 'Content Platform', 'Other'].forEach(name => addDoc(getPath('social_categories'), { name }));
+                    } else {
+                        setSocialCategories(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+                    }
+                });
+
                 const unsubLinks = onSnapshot(getPath('ecommerce_links'), (snapshot) => {
                     if (snapshot.empty) {
                         addDoc(getPath('ecommerce_links'), { title: 'Amazon Store', url: 'https://www.amazon.com', color: 'bg-orange-500' });
@@ -947,7 +1037,7 @@
                     }
                 });
 
-                return () => { unsubAds(); unsubPlatforms(); unsubTypes(); unsubSocial(); unsubLinks(); };
+                return () => { unsubAds(); unsubPlatforms(); unsubTypes(); unsubSocial(); unsubSocialCats(); unsubLinks(); };
             }, [user, accessCode]);
 
             const getPath = (col) => collection(db, 'artifacts', APP_ID, 'teams', accessCode, col);
@@ -977,6 +1067,9 @@
             const onAddAdType = (name) => addDoc(getPath('ad_types'), { name });
             const onEditAdType = (id, name) => updateDoc(doc(db, 'artifacts', APP_ID, 'teams', accessCode, 'ad_types', id), { name });
             const onDeleteAdType = (id) => handleDeleteItem('ad_types', id);
+            const onAddSocialCategory = (name) => addDoc(getPath('social_categories'), { name });
+            const onEditSocialCategory = (id, name) => updateDoc(doc(db, 'artifacts', APP_ID, 'teams', accessCode, 'social_categories', id), { name });
+            const onDeleteSocialCategory = (id) => handleDeleteItem('social_categories', id);
 
             if (!accessCode) {
                 return <LoginScreen onJoin={handleJoin} darkMode={darkMode} />;
@@ -985,10 +1078,14 @@
             const renderContent = () => {
                 switch (activeTab) {
                     case 'analysis': return <AnalysisSection ads={ads} darkMode={darkMode} />;
-                    case 'social': return <SocialSection darkMode={darkMode} socialLinks={socialLinks} onSave={onSaveSocial} onDelete={onDeleteSocial} />;
+                    case 'social': return <SocialSection darkMode={darkMode} socialLinks={socialLinks} socialCategories={socialCategories} onSave={onSaveSocial} onDelete={onDeleteSocial} />;
                     case 'adspend': return <AdSpendSection darkMode={darkMode} platforms={platforms} adTypes={adTypes} ads={ads} onSave={onSaveAd} onDelete={onDeleteAd} />;
                     case 'ecommerce': return <EcommerceSection darkMode={darkMode} links={links} onSave={onSaveLink} onDelete={onDeleteLink} />;
-                    case 'settings': return <SettingsSection darkMode={darkMode} setDarkMode={setDarkMode} platforms={platforms} onAddPlatform={onAddPlatform} onEditPlatform={onEditPlatform} onDeletePlatform={onDeletePlatform} adTypes={adTypes} onAddAdType={onAddAdType} onEditAdType={onEditAdType} onDeleteAdType={onDeleteAdType} ads={ads} onLogout={handleLogout} accessCode={accessCode} />;
+                    case 'settings': return <SettingsSection darkMode={darkMode} setDarkMode={setDarkMode} 
+                        platforms={platforms} onAddPlatform={onAddPlatform} onEditPlatform={onEditPlatform} onDeletePlatform={onDeletePlatform} 
+                        adTypes={adTypes} onAddAdType={onAddAdType} onEditAdType={onEditAdType} onDeleteAdType={onDeleteAdType} 
+                        socialCategories={socialCategories} onAddSocialCategory={onAddSocialCategory} onEditSocialCategory={onEditSocialCategory} onDeleteSocialCategory={onDeleteSocialCategory}
+                        ads={ads} onLogout={handleLogout} accessCode={accessCode} />;
                     default: return <AnalysisSection ads={ads} darkMode={darkMode} />;
                 }
             };
